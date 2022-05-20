@@ -1,0 +1,48 @@
+# ASP.NET Core (.NET Framework)
+# Build and test ASP.NET Core projects targeting the full .NET Framework.
+# Add steps that publish symbols, save build artifacts, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+
+#trigger:
+#- master
+
+pool:
+  vmImage: 'windows-2019'
+
+variables:
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+
+steps:
+- task: NuGetToolInstaller@1
+
+- task: NuGetCommand@2
+  inputs:
+    restoreSolution: '$(solution)'
+
+- task: VSBuild@1
+  inputs:
+    solution: '$(solution)'
+    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:DesktopBuildPackageLocation="$(build.artifactStagingDirectory)\WebApp.zip" /p:DeployIisAppPath="Default Web Site" /p:DebugSymbols=true'
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
+
+- task: VSTest@2
+  inputs:
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
+
+- powershell: |
+   # To allow external apps and scripts to be ran.
+   Set-ExecutionPolicy AllSigned -Scope Process -Force
+   # Download and Execute the downloaded powershell script
+   $ProgressPreference = 'SilentlyContinue'
+   iex ((New-Object System.Net.WebClient).DownloadString('https://download.srcclr.com/ci.ps1')); srcclr scan
+  # Use predefined azure pipeline variable Build.SourcesDirectory to locate your repository and scan it
+  # srcclr scan $(Build.SourcesDirectory)
+  displayName: 'Veracode SCA Agent Based Scan'
+# don't fail for demo purposes
+  continueOnError: false
+  env:
+    SRCCLR_API_TOKEN: $(SRCCLR_API_TOKEN)

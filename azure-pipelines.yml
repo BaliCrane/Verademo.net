@@ -1,0 +1,114 @@
+# ASP.NET Core (.NET Framework)
+# Build and test ASP.NET Core projects targeting the full .NET Framework.
+# Add steps that publish symbols, save build artifacts, and more:
+# https://docs.microsoft.com/azure/devops/pipelines/languages/dotnet-core
+
+trigger:
+- master
+
+pool:
+  vmImage: 'windows-2019'
+#  vmImage: 'windows-latest'
+
+variables:
+  solution: '**/*.sln'
+  buildPlatform: 'Any CPU'
+  buildConfiguration: 'Release'
+
+steps:
+- task: NuGetToolInstaller@1
+
+- task: NuGetCommand@2
+  inputs:
+    restoreSolution: '$(solution)'
+
+- task: VSBuild@1
+  inputs:
+    solution: '$(solution)'
+    msbuildArgs: '/p:DeployOnBuild=true /p:WebPublishMethod=Package /p:PackageAsSingleFile=true /p:SkipInvalidConfigurations=true /p:DesktopBuildPackageLocation="$(build.artifactStagingDirectory)\WebApp.zip" /p:DeployIisAppPath="Default Web Site" /p:DebugSymbols=true'
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
+
+- task: VSTest@2
+  inputs:
+    platform: '$(buildPlatform)'
+    configuration: '$(buildConfiguration)'
+
+- powershell: |
+   # To allow external apps and scripts to be ran.
+   Set-ExecutionPolicy AllSigned -Scope Process -Force
+   # Download and Execute the downloaded powershell script
+   $ProgressPreference = 'SilentlyContinue'
+   $Env:SRCCLR_CI_JSON=1
+   iex ((New-Object System.Net.WebClient).DownloadString('https://download.srcclr.com/ci.ps1')); srcclr scan --allow-dirty
+   # Use predefined azure pipeline variable Build.SourcesDirectory to locate your repository and scan it
+  # srcclr scan $(Build.SourcesDirectory)
+  displayName: 'Veracode SCA Agent Based Scan'
+# don't fail for demo purposes
+  continueOnError: true
+  env:
+    SRCCLR_API_TOKEN: $(SRCCLR_API_TOKEN)
+
+- powershell: |
+   # To allow external apps and scripts to be ran.
+   # Set-ExecutionPolicy AllSigned -Scope Process -Force
+   # Download and Execute the downloaded powershell script
+   $ProgressPreference = 'SilentlyContinue'
+   Invoke-WebRequest -Uri "https://tools.veracode.com/integrations/API-Wrappers/C%23/bin/VeracodeC%23API.zip" -OutFile "VeracodeC#API.zip"
+   Expand-Archive VeracodeC`#API.zip -DestinationPath .\Veracode
+   .\Veracode\VeracodeC`#API -vid "$(VERACODE_API_ID)" -vkey "$(VERACODE_API_KEY)" -action UploadAndScan -appname "$(system.teamProject)_ADO_yaml" -createprofile true -autoscan true -filepath "$(build.artifactstagingdirectory)/WebApp.zip" -version "$(build.buildNumber)" -scantimeout 60 -criticality High
+   # don't fail for demo purposes
+  displayName: 'Veracode Wrapper C# Upload and Scan'
+  continueOnError: true
+
+#- script: |
+#   curl -O -L https://downloads.veracode.com/securityscan/pipeline-scan-LATEST.zip
+#  displayName: 'Download Veracode Pipeline Scanner'
+#- task: ExtractFiles@1
+#  inputs:
+#    archiveFilePatterns: 'pipeline-scan-LATEST.zip'
+#    destinationFolder: 'pipeline'
+#    cleanDestinationFolder: false
+#    displayName: 'Extract Veracode Pipeline Scanner'
+#- script: |
+#   java -jar pipeline\pipeline-scan.jar --veracode_api_id "$(VERACODE_API_ID)" --veracode_api_key "$(VERACODE_API_KEY)" --fail_on_severity="Very High, High" --issue_details true -p "$(system.teamProject)" --file "$(Build.ArtifactStagingDirectory)/WebApp.zip"
+#  env:
+#    VERACODE_API_ID: $(VERACODE_API_ID)
+#    VERACODE_API_KEY: $(VERACODE_API_KEY)
+#  displayName: 'Run Veracode Pipeline Scan'
+## Don't break the build because this is a demo...
+#  continueOnError: true
+
+- task: VeracodePipelineScan@0
+  displayName: 'Download Veracode Pipeline Scanner'
+  inputs:
+    VeracodeAPIID: '$(VERACODE_API_ID)'
+    VeracodeAPIsecret: '$(VERACODE_API_KEY)'
+    fileToScan: '$(Build.ArtifactStagingDirectory)\WebApp.zip'
+    policyName: 'OWASP'
+  continueOnError: true
+
+#- task: Veracode@3
+#  inputs:
+#    ConnectionDetailsSelection: 'Endpoint'
+#    AnalysisService: 'Veracode'
+#    veracodeAppProfile: '$(system.teamProject)_ADO_yaml'
+#    version: '$(build.buildNumber)'
+#    filepath: '$(build.artifactstagingdirectory)'
+#    createSandBox: false
+#    createProfile: true
+#    failTheBuildIfVeracodeScanDidNotInitiate: false
+#    scanStatusCheckInterval: '60'
+#    importResults: true
+#    failBuildOnPolicyFail: false
+
+- task: Veracode Flaw Importer@3
+  inputs:
+    ConnectionDetailsSelection: 'Endpoint'
+    AnalysisService: 'Veracode'
+    veracodeAppProfile: '$(system.teamProject)_ADO_yaml'
+    sandboxName: 
+    importType: 'All Unmitigated Flaws Violating Policy'
+    workItemType: 'Bug'
+    area: '$(system.teamProject)'
+    flawImportLimit: '1000'
