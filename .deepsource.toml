@@ -2,6 +2,8 @@ version = 1
 
 [[analyzers]]
 name = "javascript"
+name = "csharp"
+enabled = true
 
   [analyzers.meta]
   plugins = [
@@ -14,8 +16,6 @@ name = "javascript"
     "nodejs"
   ]
 
-version = 1
-
 test_patterns = [
   "tests/**",
   "*Test.cs"
@@ -24,7 +24,3 @@ test_patterns = [
 exclude_patterns = [
   "**/examples/**"
 ]
-
-[[analyzers]]
-name = "csharp"
-enabled = true
