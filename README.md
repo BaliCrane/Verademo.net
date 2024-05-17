@@ -79,3 +79,4 @@ See the `docs` folder
 * cwe-384-session-fixation
 * cwe-501-trust-boundary-violation [Note - may not be applicable to .NET]
 
+Test
