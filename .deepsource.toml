@@ -2,7 +2,6 @@ version = 1
 
 [[analyzers]]
 name = "javascript"
-name = "csharp"
 enabled = true
 
   [analyzers.meta]
@@ -15,6 +14,10 @@ enabled = true
     "browser",
     "nodejs"
   ]
+
+[[analyzers]]
+name = "csharp"
+enabled = true
 
 test_patterns = [
   "tests/**",
