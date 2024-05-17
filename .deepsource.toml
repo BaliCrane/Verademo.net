@@ -14,5 +14,17 @@ name = "javascript"
     "nodejs"
   ]
 
+version = 1
+
+test_patterns = [
+  "tests/**",
+  "*Test.cs"
+]
+
+exclude_patterns = [
+  "**/examples/**"
+]
+
 [[analyzers]]
 name = "csharp"
+enabled = true
