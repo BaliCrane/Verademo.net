@@ -1,6 +1,19 @@
 version = 1
 
 [[analyzers]]
+name = "csharp"
+enabled = true
+
+test_patterns = [
+  "tests/**",
+  "*Test.cs"
+]
+
+exclude_patterns = [
+  "**/examples/**"
+]
+
+[[analyzers]]
 name = "javascript"
 enabled = true
 
@@ -14,16 +27,3 @@ enabled = true
     "browser",
     "nodejs"
   ]
-
-[[analyzers]]
-name = "csharp"
-enabled = true
-
-test_patterns = [
-  "tests/**",
-  "*Test.cs"
-]
-
-exclude_patterns = [
-  "**/examples/**"
-]
